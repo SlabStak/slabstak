@@ -13,7 +13,18 @@ from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Lazy client initialization to avoid errors during import
+_client = None
+
+def get_openai_client():
+    """Lazily initialize OpenAI client"""
+    global _client
+    if _client is None:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY environment variable not set")
+        _client = OpenAI(api_key=api_key)
+    return _client
 
 
 class ListingRequest(BaseModel):
@@ -160,6 +171,7 @@ Make it compelling, accurate, and optimized for {req.platform}!
             system_prompt = self._build_system_prompt(req.platform, req.tone)
             user_prompt = self._build_user_prompt(req)
 
+            client = get_openai_client()
             response = client.chat.completions.create(
                 model="gpt-4-turbo-preview",
                 messages=[

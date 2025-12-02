@@ -395,8 +395,11 @@ class MarketDataService:
         """
         for p in self.providers:
             try:
-                if provider != "auto" and p.__class__.__name__.lower() != provider.lower():
-                    continue
+                # Match provider by class name (e.g., "simulated" matches "SimulatedMarketProvider")
+                if provider != "auto":
+                    class_name = p.__class__.__name__.lower()
+                    if provider.lower() not in class_name:
+                        continue
 
                 logger.info(f"Fetching market data from {p.__class__.__name__}")
                 snapshot = await p.get_snapshot(player, set_name, year, grade)
