@@ -198,43 +198,59 @@ class MarketRequest(BaseModel):
     set_name: str
     year: int | None = None
     grade_estimate: str | None = None
+    provider: str | None = "auto"
 
 
-class MarketSnapshot(BaseModel):
-    source: str
-    currency: str
-    floor: float
-    average: float
-    ceiling: float
-    listings_count: int | None = None
-    last_sale_price: float | None = None
-    last_sale_date: str | None = None
+# Import market data service
+from services.market_data import market_service, MarketSnapshot as MarketSnapshotModel
 
 
-@app.post("/market", response_model=MarketSnapshot)
+@app.post("/market")
 async def get_market_snapshot(req: MarketRequest):
-    """Phase 4 stub: in production, call real market APIs here."""
+    """
+    Get real market data for a card.
 
-    base_avg = 100.0
-    if req.grade_estimate:
-        if "10" in req.grade_estimate:
-            base_avg = 250.0
-        elif "9" in req.grade_estimate:
-            base_avg = 140.0
-        elif "8" in req.grade_estimate:
-            base_avg = 80.0
+    Uses multiple providers (eBay, etc.) with automatic fallback.
+    Returns comparable sales and pricing statistics.
+    """
+    logger.info(f"Market data request: {req.player} - {req.set_name}")
 
-    avg = base_avg
-    floor = avg * 0.7
-    ceiling = avg * 1.3
+    try:
+        snapshot = await market_service.get_market_data(
+            player=req.player,
+            set_name=req.set_name,
+            year=req.year,
+            grade=req.grade_estimate,
+            provider=req.provider or "auto"
+        )
 
-    return MarketSnapshot(
-        source="simulated",
-        currency="USD",
-        floor=round(floor, 2),
-        average=round(avg, 2),
-        ceiling=round(ceiling, 2),
-        listings_count=12,
-        last_sale_price=round(avg * 1.05, 2),
-        last_sale_date=None,
-    )
+        # Convert to response format
+        response = {
+            "source": snapshot.source,
+            "currency": snapshot.currency,
+            "floor": snapshot.floor,
+            "average": snapshot.average,
+            "ceiling": snapshot.ceiling,
+            "listings_count": snapshot.listings_count,
+            "confidence": snapshot.confidence,
+            "last_updated": snapshot.last_updated.isoformat(),
+            "comps": [
+                {
+                    "title": comp.title,
+                    "price": comp.price,
+                    "sold_date": comp.sold_date.isoformat(),
+                    "condition": comp.condition,
+                    "grade": comp.grade,
+                    "url": comp.url,
+                    "source": comp.source
+                }
+                for comp in snapshot.comps[:10]  # Return top 10 comps
+            ]
+        }
+
+        logger.info(f"Market data returned: {snapshot.listings_count} listings from {snapshot.source}")
+        return response
+
+    except Exception as e:
+        logger.error(f"Market data request failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch market data: {str(e)}")
