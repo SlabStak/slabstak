@@ -4,6 +4,7 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Spinner from "@/components/ui/Spinner";
+import ListingGenerator from "@/components/listing/ListingGenerator";
 import { CardRecord } from "@/lib/types";
 
 interface PageProps {
@@ -453,6 +454,11 @@ export default function CardDetailPage({ params }: PageProps) {
           )}
         </div>
       )}
+
+      {/* AI Listing Generator */}
+      <div className="mt-8">
+        <ListingGenerator card={card} />
+      </div>
     </div>
   );
 }

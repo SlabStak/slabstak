@@ -254,3 +254,36 @@ async def get_market_snapshot(req: MarketRequest):
     except Exception as e:
         logger.error(f"Market data request failed: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch market data: {str(e)}")
+
+
+# Import listing generator
+from services.listing_generator import listing_generator, ListingRequest as ListingGenRequest
+
+
+@app.post("/generate-listing")
+async def generate_listing(req: ListingGenRequest):
+    """
+    Generate optimized marketplace listing using AI.
+
+    Supports multiple platforms (eBay, PWCC, WhatNot, COMC) with
+    customizable tone and formatting.
+    """
+    logger.info(f"Generating {req.platform} listing for {req.player}")
+
+    try:
+        listing = await listing_generator.generate_listing(req)
+
+        response = {
+            "title": listing.title,
+            "description": listing.description,
+            "keywords": listing.keywords,
+            "platform": listing.platform,
+            "character_counts": listing.character_counts,
+        }
+
+        logger.info(f"Listing generated successfully")
+        return response
+
+    except Exception as e:
+        logger.error(f"Listing generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate listing: {str(e)}")
