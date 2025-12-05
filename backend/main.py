@@ -49,6 +49,14 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Import and include ML routes
+try:
+    from ml_routes import router as ml_router
+    app.include_router(ml_router)
+    logger.info("ML routes loaded successfully")
+except Exception as e:
+    logger.warning(f"ML routes not loaded: {e}")
+
 # Configure CORS
 origins = ALLOWED_ORIGIN.split(",") if "," in ALLOWED_ORIGIN else [ALLOWED_ORIGIN]
 app.add_middleware(

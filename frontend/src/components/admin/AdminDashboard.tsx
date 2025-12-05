@@ -33,8 +33,16 @@ export default function AdminDashboard({ stats, recentUsers, recentCards }: Admi
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl md:text-3xl font-semibold">Admin Dashboard</h1>
-        <div className="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
-          Admin
+        <div className="flex items-center gap-3">
+          <a
+            href="/admin/ml"
+            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            🤖 ML Admin
+          </a>
+          <div className="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+            Admin
+          </div>
         </div>
       </div>
 
