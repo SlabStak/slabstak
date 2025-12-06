@@ -48,7 +48,7 @@ export default function Navbar() {
             </Link>
           ) : (
             <Link
-              href="/scan"
+              href="/auth"
               className="px-3 py-1.5 rounded-full border border-slate-700 text-slate-100 font-semibold text-xs hover:border-sky-400"
             >
               Sign in to save
