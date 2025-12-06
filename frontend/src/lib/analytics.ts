@@ -100,7 +100,7 @@ class Analytics {
    * Track subscription event
    */
   subscriptionEvent(event: "checkout_started" | "checkout_completed" | "subscription_cancelled", plan?: string) {
-    this.track(event, { plan });
+    this.track(event, { plan: plan || null });
   }
 
   /**

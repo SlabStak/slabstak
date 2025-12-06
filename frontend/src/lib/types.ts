@@ -23,6 +23,8 @@ export interface CardRecord {
   estimated_high: number;
   recommendation: string;
   notes: string | null;
+  purchase_price: number | null;
+  sold_price: number | null;
   created_at: string;
 }
 

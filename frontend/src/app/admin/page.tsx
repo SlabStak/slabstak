@@ -29,10 +29,10 @@ export default async function AdminPage() {
   const stats = {
     totalUsers: usersResult.count || 0,
     totalCards: cardsResult.count || 0,
-    activeSubscriptions: subsResult.data?.filter((s) => s.status === "active").length || 0,
+    activeSubscriptions: subsResult.data?.filter((s: any) => s.status === "active").length || 0,
     totalRevenue: subsResult.data
-      ?.filter((s) => s.plan === "pro")
-      .reduce((sum, s) => sum + 29.99, 0) || 0,
+      ?.filter((s: any) => s.plan === "pro")
+      .reduce((sum: number, s: any) => sum + 29.99, 0) || 0,
   };
 
   // Fetch recent users

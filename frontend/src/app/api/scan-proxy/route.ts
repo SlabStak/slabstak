@@ -3,11 +3,7 @@ import { getSupabaseServer } from "@/lib/supabaseClient";
 import { getCurrentUserServer, getUserSubscription } from "@/lib/auth";
 import { FREE_SCANS_PER_MONTH, PRO_SCANS_PER_MONTH_SOFT } from "@/lib/config";
 
-const BACKEND_SCAN_URL = process.env.BACKEND_SCAN_URL;
-
-if (!BACKEND_SCAN_URL) {
-  throw new Error("Missing BACKEND_SCAN_URL env var");
-}
+const BACKEND_SCAN_URL = process.env.NEXT_PUBLIC_BACKEND_SCAN_URL || process.env.BACKEND_SCAN_URL || "http://localhost:8000/scan";
 
 function getYearMonth(d = new Date()) {
   const y = d.getFullYear();

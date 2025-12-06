@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabaseClient";
-import { cookies } from "next/headers";
+import { getSupabaseServer } from "@/lib/supabaseClient";
 
 export async function GET() {
   try {
-    const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    const supabase = getSupabaseServer();
 
     // Get current user
     const {

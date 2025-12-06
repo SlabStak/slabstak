@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserServer } from "@/lib/auth";
 
-const BACKEND_MARKET_URL = process.env.BACKEND_MARKET_URL; // e.g. https://backend/market
-
-if (!BACKEND_MARKET_URL) {
-  throw new Error("Missing BACKEND_MARKET_URL env var");
-}
+const BACKEND_MARKET_URL = process.env.BACKEND_MARKET_URL || "http://localhost:8000/market";
 
 export async function POST(req: NextRequest) {
   const user = await getCurrentUserServer();
