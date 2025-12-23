@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUserServer } from "@/lib/auth";
 import { getSupabaseServer } from "@/lib/supabaseClient";
+import { PRO_PLAN_PRICE } from "@/lib/config";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 
 export default async function AdminPage() {
@@ -32,7 +33,7 @@ export default async function AdminPage() {
     activeSubscriptions: subsResult.data?.filter((s: any) => s.status === "active").length || 0,
     totalRevenue: subsResult.data
       ?.filter((s: any) => s.plan === "pro")
-      .reduce((sum: number, s: any) => sum + 29.99, 0) || 0,
+      .reduce((sum: number, s: any) => sum + PRO_PLAN_PRICE, 0) || 0,
   };
 
   // Fetch recent users
