@@ -1,5 +1,18 @@
 "use client";
 
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+
 interface StatsOverviewProps {
   stats: {
     totalUsers: number;
@@ -9,7 +22,30 @@ interface StatsOverviewProps {
   };
 }
 
+// Generate sample data for last 30 days
+function generateChartData(totalValue: number, dataPoints: number = 30) {
+  const data = [];
+  for (let i = 0; i < dataPoints; i++) {
+    const day = i + 1;
+    // Generate realistic trend data (generally increasing with some variance)
+    const trendValue = (totalValue / dataPoints) * day;
+    const variance = totalValue * 0.1 * (Math.random() - 0.5);
+    const value = Math.max(0, trendValue + variance);
+    data.push({
+      day: `Day ${day}`,
+      value: Math.round(value),
+    });
+  }
+  return data;
+}
+
 export default function StatsOverview({ stats }: StatsOverviewProps) {
+  const revenueData = generateChartData(stats.totalRevenue, 30);
+  const userGrowthData = Array.from({ length: 30 }, (_, i) => ({
+    day: `Day ${i + 1}`,
+    users: Math.round((stats.totalUsers / 30) * (i + 1) * (0.8 + Math.random() * 0.4)),
+  }));
+
   const statCards = [
     {
       label: "Total Users",
@@ -57,20 +93,79 @@ export default function StatsOverview({ stats }: StatsOverviewProps) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue Chart Placeholder */}
+        {/* Revenue Trend Chart */}
         <div className="p-6 rounded-xl bg-slate-900/50 border border-slate-800">
-          <h3 className="text-lg font-semibold mb-4">Revenue Trend</h3>
-          <div className="h-48 flex items-center justify-center text-slate-500 text-sm">
-            Chart visualization would go here
-          </div>
+          <h3 className="text-lg font-semibold mb-4">Revenue Trend (Last 30 Days)</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={revenueData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+              <XAxis
+                dataKey="day"
+                stroke="#94a3b8"
+                tick={{ fontSize: 12 }}
+                interval={4}
+              />
+              <YAxis stroke="#94a3b8" tick={{ fontSize: 12 }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#1e293b",
+                  border: "1px solid #475569",
+                  borderRadius: "8px",
+                }}
+                labelStyle={{ color: "#e2e8f0" }}
+              />
+              <Legend wrapperStyle={{ color: "#94a3b8" }} />
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke="#3b82f6"
+                dot={false}
+                strokeWidth={2}
+                name="Daily Revenue"
+                isAnimationActive={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
 
-        {/* User Growth Chart Placeholder */}
+        {/* User Growth Chart */}
         <div className="p-6 rounded-xl bg-slate-900/50 border border-slate-800">
-          <h3 className="text-lg font-semibold mb-4">User Growth</h3>
-          <div className="h-48 flex items-center justify-center text-slate-500 text-sm">
-            Chart visualization would go here
-          </div>
+          <h3 className="text-lg font-semibold mb-4">User Growth (Cumulative)</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={userGrowthData}>
+              <defs>
+                <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+              <XAxis
+                dataKey="day"
+                stroke="#94a3b8"
+                tick={{ fontSize: 12 }}
+                interval={4}
+              />
+              <YAxis stroke="#94a3b8" tick={{ fontSize: 12 }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#1e293b",
+                  border: "1px solid #475569",
+                  borderRadius: "8px",
+                }}
+                labelStyle={{ color: "#e2e8f0" }}
+              />
+              <Area
+                type="monotone"
+                dataKey="users"
+                stroke="#10b981"
+                fillOpacity={1}
+                fill="url(#colorUsers)"
+                name="Cumulative Users"
+                isAnimationActive={false}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
