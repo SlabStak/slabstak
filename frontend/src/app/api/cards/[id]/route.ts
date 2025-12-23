@@ -93,11 +93,32 @@ export async function DELETE(
 
   const supabase = getSupabaseServer();
 
-  // Optional: Delete associated image from storage
-  // const card = await supabase.from("cards").select("image_url").eq("id", id).single();
-  // if (card.data?.image_url) {
-  //   // Extract path and delete from storage
-  // }
+  // Delete associated image from storage
+  const { data: card, error: fetchError } = await supabase
+    .from("cards")
+    .select("image_url")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (card?.image_url) {
+    try {
+      // Extract the storage path from the URL
+      // URL format: https://PROJECT.supabase.co/storage/v1/object/public/BUCKET/PATH
+      const urlParts = card.image_url.split("/object/public/");
+      if (urlParts.length === 2) {
+        const bucketAndPath = urlParts[1];
+        const pathParts = bucketAndPath.split("/");
+        const bucket = pathParts[0];
+        const filePath = pathParts.slice(1).join("/");
+
+        await supabase.storage.from(bucket).remove([filePath]);
+      }
+    } catch (storageError) {
+      console.error("Failed to delete image from storage:", storageError);
+      // Continue with card deletion even if image deletion fails
+    }
+  }
 
   const { error } = await supabase
     .from("cards")
