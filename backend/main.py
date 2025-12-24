@@ -12,6 +12,7 @@ from PIL import Image
 import pytesseract
 from openai import OpenAI
 from dotenv import load_dotenv
+from cache import market_data_cache, cached
 
 # Load environment variables
 load_dotenv()
@@ -344,10 +345,22 @@ async def get_market_snapshot(req: MarketRequest):
 
     Uses multiple providers (eBay, etc.) with automatic fallback.
     Returns comparable sales and pricing statistics.
+    Responses are cached for 15 minutes to reduce API calls.
     """
     logger.info(f"Market data request: {req.player} - {req.set_name}")
 
     try:
+        # Create cache key based on request parameters
+        cache_key = f"{req.player}:{req.set_name}:{req.year}:{req.grade_estimate}"
+
+        # Try to get from cache first
+        cached_response = market_data_cache.get(cache_key)
+        if cached_response:
+            logger.info(f"Cache hit for market data: {cache_key}")
+            return cached_response
+
+        logger.info(f"Cache miss, fetching fresh data for: {cache_key}")
+
         snapshot = await market_service.get_market_data(
             player=req.player,
             set_name=req.set_name,
@@ -377,8 +390,12 @@ async def get_market_snapshot(req: MarketRequest):
                     "source": comp.source
                 }
                 for comp in snapshot.comps[:10]  # Return top 10 comps
-            ]
+            ],
+            "cached": False
         }
+
+        # Cache the response for 15 minutes
+        market_data_cache.set(cache_key, response, ttl_seconds=15 * 60)
 
         logger.info(f"Market data returned: {snapshot.listings_count} listings from {snapshot.source}")
         return response
