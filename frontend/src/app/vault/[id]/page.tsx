@@ -302,7 +302,7 @@ export default function CardDetailPage({ params }: PageProps) {
               userCardData={{
                 player: card.player,
                 set_name: card.set_name,
-                year: card.year,
+                year: card.year ?? undefined,
               }}
               onMatchSelected={(match) => {
                 console.log("Card matched to:", match.player_name);
