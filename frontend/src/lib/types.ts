@@ -36,6 +36,7 @@ export interface SubscriptionRecord {
   plan: string;
   status: string;
   current_period_end: string | null;
+  cancel_at_period_end?: boolean;
 }
 
 export interface DealerShow {

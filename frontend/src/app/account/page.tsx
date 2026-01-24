@@ -20,7 +20,7 @@ export default async function AccountPage() {
               plan: sub.plan,
               status: sub.status,
               current_period_end: sub.current_period_end,
-              cancel_at_period_end: sub.cancel_at_period_end,
+              cancel_at_period_end: sub.cancel_at_period_end ?? false,
               stripe_customer_id: sub.stripe_customer_id,
             }
           : null
