@@ -98,6 +98,7 @@ export async function POST(req: NextRequest) {
 
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
+        const customerId = subscription.customer as string;
 
         const { error } = await supabase
           .from("subscriptions")
@@ -111,6 +112,31 @@ export async function POST(req: NextRequest) {
           console.error("Failed to cancel subscription:", error);
         } else {
           console.log(`Subscription canceled: ${subscription.id}`);
+
+          // Send email notification about canceled subscription
+          try {
+            const customer = await stripe.customers.retrieve(customerId);
+            if (customer && !customer.deleted && customer.email) {
+              const backendUrl = process.env.NEXT_PUBLIC_BACKEND_SCAN_URL || "http://localhost:8000";
+              const endDate = new Date(subscription.current_period_end * 1000).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              });
+              await fetch(`${backendUrl}/notify/subscription-canceled`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  email: customer.email,
+                  end_date: endDate,
+                  user_name: customer.name || undefined,
+                }),
+              });
+              console.log(`Subscription canceled notification sent to ${customer.email}`);
+            }
+          } catch (emailError) {
+            console.error("Failed to send subscription canceled email:", emailError);
+          }
         }
         break;
       }
@@ -138,6 +164,7 @@ export async function POST(req: NextRequest) {
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice;
         const subscriptionId = invoice.subscription as string;
+        const customerId = invoice.customer as string;
 
         if (subscriptionId) {
           // Mark subscription as past_due
@@ -152,7 +179,26 @@ export async function POST(req: NextRequest) {
             console.error("Failed to update subscription status:", error);
           }
 
-          // TODO: Send email to user about failed payment
+          // Send email notification about failed payment
+          try {
+            const customer = await stripe.customers.retrieve(customerId);
+            if (customer && !customer.deleted && customer.email) {
+              const backendUrl = process.env.NEXT_PUBLIC_BACKEND_SCAN_URL || "http://localhost:8000";
+              await fetch(`${backendUrl}/notify/payment-failed`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  email: customer.email,
+                  subscription_id: subscriptionId,
+                  user_name: customer.name || undefined,
+                }),
+              });
+              console.log(`Payment failed notification sent to ${customer.email}`);
+            }
+          } catch (emailError) {
+            console.error("Failed to send payment failed email:", emailError);
+          }
+
           console.log(`Payment failed for subscription: ${subscriptionId}`);
         }
         break;

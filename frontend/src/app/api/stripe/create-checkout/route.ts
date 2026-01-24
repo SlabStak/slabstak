@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserServer } from "@/lib/auth";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { STRIPE_PRICE_PRO_MONTHLY } from "@/lib/config";
 
 export async function POST() {
@@ -10,6 +10,7 @@ export async function POST() {
   }
 
   try {
+    const stripe = getStripe();
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],

@@ -311,15 +311,19 @@ class FineTuningManager:
 
         training_tokens = total_tokens * epochs
 
-        # Pricing (as of Dec 2024)
-        # GPT-4o-mini: $3.00 / 1M tokens for training
-        # GPT-3.5-turbo: $8.00 / 1M tokens for training
-        if "gpt-4o-mini" in model:
-            cost_per_1m = 3.00
-        elif "gpt-3.5-turbo" in model:
-            cost_per_1m = 8.00
-        else:
-            cost_per_1m = 3.00  # Default estimate
+        # Pricing configuration (in USD per 1M tokens)
+        # Can be overridden with environment variables
+        pricing_config = {
+            "gpt-4o-mini": float(os.getenv("FINETUNING_PRICE_GPT4O_MINI", "3.00")),
+            "gpt-3.5-turbo": float(os.getenv("FINETUNING_PRICE_GPT35_TURBO", "8.00")),
+            "default": float(os.getenv("FINETUNING_PRICE_DEFAULT", "3.00")),
+        }
+
+        cost_per_1m = pricing_config.get("default", 3.00)
+        for model_name, price in pricing_config.items():
+            if model_name != "default" and model_name in model:
+                cost_per_1m = price
+                break
 
         estimated_cost = (training_tokens / 1_000_000) * cost_per_1m
 

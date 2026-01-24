@@ -275,6 +275,172 @@ class EmailService:
 
         return await EmailService.send_email(to, subject, html)
 
+    @staticmethod
+    async def send_payment_failed_email(
+        to: str,
+        subscription_id: str,
+        user_name: Optional[str] = None,
+    ) -> bool:
+        """Send payment failed notification email"""
+        name = user_name or "there"
+        subject = "Action Required: Payment Failed for SlabStak Pro"
+
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: linear-gradient(135deg, #ef4444 0%, #f97316 100%); padding: 40px 20px; text-align: center; border-radius: 8px 8px 0 0; }}
+                .header h1 {{ color: white; margin: 0; font-size: 28px; }}
+                .content {{ background: #fff; padding: 40px; border: 1px solid #e2e8f0; border-top: none; }}
+                .alert-box {{ background: #fef2f2; border: 2px solid #ef4444; padding: 20px; border-radius: 8px; margin: 20px 0; }}
+                .button {{ display: inline-block; padding: 12px 24px; background: #0ea5e9; color: white; text-decoration: none; border-radius: 6px; margin: 20px 0; }}
+                .footer {{ text-align: center; padding: 20px; color: #64748b; font-size: 14px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>Payment Failed</h1>
+                </div>
+                <div class="content">
+                    <p>Hi {name},</p>
+
+                    <div class="alert-box">
+                        <p style="margin: 0; color: #dc2626;"><strong>We couldn't process your payment for SlabStak Pro.</strong></p>
+                    </div>
+
+                    <p>This could happen for a few reasons:</p>
+                    <ul>
+                        <li>Your card expired or was declined</li>
+                        <li>Insufficient funds</li>
+                        <li>Your bank flagged the transaction</li>
+                    </ul>
+
+                    <p><strong>What happens next?</strong></p>
+                    <p>We'll automatically retry the payment in a few days. To avoid any interruption to your Pro features, please update your payment method.</p>
+
+                    <p style="text-align: center;">
+                        <a href="{EmailService.APP_URL}/account" class="button">Update Payment Method</a>
+                    </p>
+
+                    <p>If your payment isn't updated within 7 days, your account will revert to the free plan and you'll lose access to Pro features.</p>
+
+                    <p>Questions? Just reply to this email - we're here to help!</p>
+
+                    <p>Best,<br>The SlabStak Team</p>
+                </div>
+                <div class="footer">
+                    <p>&copy; 2024 SlabStak. All rights reserved.</p>
+                    <p><a href="{EmailService.APP_URL}/account" style="color: #0ea5e9; text-decoration: none;">Manage Subscription</a></p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        text = f"""
+        Payment Failed - Action Required
+
+        Hi {name},
+
+        We couldn't process your payment for SlabStak Pro.
+
+        This could happen because:
+        - Your card expired or was declined
+        - Insufficient funds
+        - Your bank flagged the transaction
+
+        What happens next?
+        We'll automatically retry the payment in a few days. To avoid any interruption to your Pro features, please update your payment method.
+
+        Update Payment Method: {EmailService.APP_URL}/account
+
+        If your payment isn't updated within 7 days, your account will revert to the free plan.
+
+        Questions? Just reply to this email - we're here to help!
+
+        Best,
+        The SlabStak Team
+        """
+
+        return await EmailService.send_email(to, subject, html, text)
+
+    @staticmethod
+    async def send_subscription_canceled_email(
+        to: str,
+        end_date: str,
+        user_name: Optional[str] = None,
+    ) -> bool:
+        """Send subscription canceled confirmation email"""
+        name = user_name or "there"
+        subject = "Your SlabStak Pro Subscription Has Been Canceled"
+
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: linear-gradient(135deg, #64748b 0%, #475569 100%); padding: 40px 20px; text-align: center; border-radius: 8px 8px 0 0; }}
+                .header h1 {{ color: white; margin: 0; font-size: 28px; }}
+                .content {{ background: #fff; padding: 40px; border: 1px solid #e2e8f0; border-top: none; }}
+                .info-box {{ background: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px; margin: 20px 0; }}
+                .button {{ display: inline-block; padding: 12px 24px; background: #0ea5e9; color: white; text-decoration: none; border-radius: 6px; margin: 20px 0; }}
+                .footer {{ text-align: center; padding: 20px; color: #64748b; font-size: 14px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>Subscription Canceled</h1>
+                </div>
+                <div class="content">
+                    <p>Hi {name},</p>
+
+                    <p>Your SlabStak Pro subscription has been canceled.</p>
+
+                    <div class="info-box">
+                        <p style="margin: 0;"><strong>You'll still have Pro access until:</strong></p>
+                        <p style="font-size: 20px; font-weight: bold; margin: 10px 0 0; color: #0ea5e9;">{end_date}</p>
+                    </div>
+
+                    <p>After this date, your account will revert to the free plan:</p>
+                    <ul>
+                        <li>Card vault limited to 10 cards</li>
+                        <li>Basic scan features only</li>
+                        <li>No dealer show tracking</li>
+                    </ul>
+
+                    <p>Changed your mind? You can resubscribe anytime:</p>
+
+                    <p style="text-align: center;">
+                        <a href="{EmailService.APP_URL}/pricing" class="button">Resubscribe to Pro</a>
+                    </p>
+
+                    <p>We'd love to hear your feedback on how we can improve. Just reply to this email.</p>
+
+                    <p>Thanks for being a SlabStak user!</p>
+
+                    <p>Best,<br>The SlabStak Team</p>
+                </div>
+                <div class="footer">
+                    <p>&copy; 2024 SlabStak. All rights reserved.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        return await EmailService.send_email(to, subject, html)
+
 
 # Global instance
 email_service = EmailService()

@@ -1,0 +1,16 @@
+player_name,set_name,card_number,year,sport,manufacturer,team,position,card_type
+Michael Jordan,1986-87 Fleer Basketball,57,1986,basketball,Fleer,Chicago Bulls,Guard,rookie
+LeBron James,2003-04 Topps Basketball,221,2003,basketball,Topps,Cleveland Cavaliers,Forward,rookie
+Zion Williamson,2020-21 Panini Prizm Basketball,2,2020,basketball,Panini,New Orleans Pelicans,Forward,rookie
+Luka Doncic,2018-19 Panini Prizm Basketball,280,2018,basketball,Panini,Dallas Mavericks,Guard,rookie
+Kobe Bryant,1996-97 Fleer Basketball,203,1996,basketball,Fleer,Los Angeles Lakers,Guard,rookie
+Magic Johnson,1979-80 Topps Basketball,139,1979,basketball,Topps,Los Angeles Lakers,Guard,rookie
+Steph Curry,2009-10 Panini Basketball,160,2009,basketball,Panini,Golden State Warriors,Guard,rookie
+Larry Bird,1979-80 Topps Basketball,33,1979,basketball,Topps,Boston Celtics,Forward,rookie
+Jayson Tatum,2018-19 Panini Prizm Basketball,279,2018,basketball,Panini,Boston Celtics,Forward,rookie
+Ja Morant,2019-20 Panini Prizm Basketball,248,2019,basketball,Panini,Memphis Grizzlies,Guard,rookie
+Babe Ruth,1921 W512,1,1921,baseball,Mecca,New York Yankees,Outfield,base
+Jackie Robinson,1948 Leaf Baseball,79,1948,baseball,Leaf,Brooklyn Dodgers,Infield,base
+Mike Trout,2011 Bowman Baseball,101,2011,baseball,Bowman,Los Angeles Angels,Outfield,rookie
+Tom Brady,2000 Bowman Football,236,2000,football,Bowman,New England Patriots,Quarterback,rookie
+Patrick Mahomes,2017 Panini Donruss Football,327,2017,football,Donruss,Kansas City Chiefs,Quarterback,rookie

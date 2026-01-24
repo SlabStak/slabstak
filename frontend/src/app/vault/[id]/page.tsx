@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Spinner from "@/components/ui/Spinner";
 import ListingGenerator from "@/components/listing/ListingGenerator";
+import CardMatchSuggestions from "@/components/cards/CardMatchSuggestions";
 import { CardRecord } from "@/lib/types";
 
 interface PageProps {
@@ -288,6 +289,25 @@ export default function CardDetailPage({ params }: PageProps) {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Card Matching Suggestions */}
+          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-slate-100">Match to Catalog</h2>
+            <p className="text-sm text-slate-400 mb-4">
+              Find and link this card to our master database for comparison and tracking.
+            </p>
+            <CardMatchSuggestions
+              userCardId={resolvedParams.id}
+              userCardData={{
+                player: card.player,
+                set_name: card.set_name,
+                year: card.year ?? undefined,
+              }}
+              onMatchSelected={(match) => {
+                console.log("Card matched to:", match.player_name);
+              }}
+            />
           </div>
 
           {/* Valuation */}

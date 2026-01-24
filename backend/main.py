@@ -1,15 +1,18 @@
 import os
 import json
 import logging
+import time
+from collections import defaultdict
 from io import BytesIO
 from typing import Optional
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from PIL import Image
 import pytesseract
 from openai import OpenAI
 from dotenv import load_dotenv
+from cache import market_data_cache, cached
 
 # Load environment variables
 load_dotenv()
@@ -27,6 +30,91 @@ ASSISTANT_ID = os.getenv("ASSISTANT_ID")
 ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "http://localhost:3000")
 TESSERACT_CMD = os.getenv("TESSERACT_CMD", "/opt/homebrew/bin/tesseract")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+
+# File upload limits
+MAX_FILE_SIZE_MB = int(os.getenv("MAX_FILE_SIZE_MB", "10"))
+MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+MAX_IMAGE_DIMENSION = int(os.getenv("MAX_IMAGE_DIMENSION", "8000"))
+
+# Rate limiting configuration
+RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "10"))  # requests per window
+RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))  # window in seconds
+
+
+class RateLimiter:
+    """Simple in-memory rate limiter using sliding window."""
+
+    def __init__(self, max_requests: int, window_seconds: int):
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self.requests: dict[str, list[float]] = defaultdict(list)
+
+    def is_allowed(self, client_id: str) -> tuple[bool, int]:
+        """
+        Check if request is allowed for client.
+
+        Returns:
+            Tuple of (allowed: bool, retry_after: int seconds)
+        """
+        now = time.time()
+        window_start = now - self.window_seconds
+
+        # Clean old requests
+        self.requests[client_id] = [
+            req_time for req_time in self.requests[client_id]
+            if req_time > window_start
+        ]
+
+        if len(self.requests[client_id]) >= self.max_requests:
+            # Calculate retry after
+            oldest = min(self.requests[client_id])
+            retry_after = int(oldest + self.window_seconds - now) + 1
+            return False, retry_after
+
+        # Allow request
+        self.requests[client_id].append(now)
+        return True, 0
+
+    def get_remaining(self, client_id: str) -> int:
+        """Get remaining requests for client."""
+        now = time.time()
+        window_start = now - self.window_seconds
+        current = [r for r in self.requests.get(client_id, []) if r > window_start]
+        return max(0, self.max_requests - len(current))
+
+
+# Global rate limiter for AI endpoints
+ai_rate_limiter = RateLimiter(RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW)
+
+
+def get_client_id(request: Request) -> str:
+    """Get client identifier for rate limiting."""
+    # Try to get user ID from header (set by authenticated frontend)
+    user_id = request.headers.get("X-User-ID")
+    if user_id:
+        return f"user:{user_id}"
+
+    # Fall back to IP address
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return f"ip:{forwarded.split(',')[0].strip()}"
+
+    return f"ip:{request.client.host if request.client else 'unknown'}"
+
+
+def check_rate_limit(request: Request, limiter: RateLimiter) -> None:
+    """Check rate limit and raise HTTPException if exceeded."""
+    client_id = get_client_id(request)
+    allowed, retry_after = limiter.is_allowed(client_id)
+
+    if not allowed:
+        logger.warning(f"Rate limit exceeded for {client_id}")
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit exceeded. Try again in {retry_after} seconds.",
+            headers={"Retry-After": str(retry_after)}
+        )
+
 
 # Validate required environment variables
 if not OPENAI_API_KEY:
@@ -97,22 +185,59 @@ async def health():
     }
 
 @app.post("/scan", response_model=ScanResponse)
-async def scan_card(file: UploadFile = File(...)):
+async def scan_card(request: Request, file: UploadFile = File(...)):
     """
     Scan a card image using OCR and AI identification.
 
     - Accepts image file (JPG, PNG, WEBP)
+    - Max file size: 10MB (configurable via MAX_FILE_SIZE_MB)
+    - Max dimensions: 8000x8000 (configurable via MAX_IMAGE_DIMENSION)
+    - Rate limited: 10 requests per minute (configurable)
     - Returns card details and valuation
     """
+    # Check rate limit before processing
+    check_rate_limit(request, ai_rate_limiter)
+
     logger.info(f"Processing scan for file: {file.filename}")
 
     # Validate file type
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
 
+    # Read file with size limit
     try:
         contents = await file.read()
+        file_size = len(contents)
+
+        if file_size > MAX_FILE_SIZE_BYTES:
+            logger.warning(f"File too large: {file_size} bytes (max: {MAX_FILE_SIZE_BYTES})")
+            raise HTTPException(
+                status_code=413,
+                detail=f"File size ({file_size // (1024*1024)}MB) exceeds maximum allowed ({MAX_FILE_SIZE_MB}MB)"
+            )
+
+        logger.info(f"File size: {file_size / 1024:.1f}KB")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to read file: {e}")
+        raise HTTPException(status_code=400, detail="Failed to read uploaded file")
+
+    try:
         image = Image.open(BytesIO(contents)).convert("RGB")
+
+        # Validate image dimensions
+        width, height = image.size
+        if width > MAX_IMAGE_DIMENSION or height > MAX_IMAGE_DIMENSION:
+            logger.warning(f"Image too large: {width}x{height} (max: {MAX_IMAGE_DIMENSION})")
+            raise HTTPException(
+                status_code=413,
+                detail=f"Image dimensions ({width}x{height}) exceed maximum allowed ({MAX_IMAGE_DIMENSION}x{MAX_IMAGE_DIMENSION})"
+            )
+
+        logger.info(f"Image dimensions: {width}x{height}")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to process image: {e}")
         raise HTTPException(status_code=400, detail="Invalid or corrupted image file")
@@ -220,10 +345,22 @@ async def get_market_snapshot(req: MarketRequest):
 
     Uses multiple providers (eBay, etc.) with automatic fallback.
     Returns comparable sales and pricing statistics.
+    Responses are cached for 15 minutes to reduce API calls.
     """
     logger.info(f"Market data request: {req.player} - {req.set_name}")
 
     try:
+        # Create cache key based on request parameters
+        cache_key = f"{req.player}:{req.set_name}:{req.year}:{req.grade_estimate}"
+
+        # Try to get from cache first
+        cached_response = market_data_cache.get(cache_key)
+        if cached_response:
+            logger.info(f"Cache hit for market data: {cache_key}")
+            return cached_response
+
+        logger.info(f"Cache miss, fetching fresh data for: {cache_key}")
+
         snapshot = await market_service.get_market_data(
             player=req.player,
             set_name=req.set_name,
@@ -253,8 +390,12 @@ async def get_market_snapshot(req: MarketRequest):
                     "source": comp.source
                 }
                 for comp in snapshot.comps[:10]  # Return top 10 comps
-            ]
+            ],
+            "cached": False
         }
+
+        # Cache the response for 15 minutes
+        market_data_cache.set(cache_key, response, ttl_seconds=15 * 60)
 
         logger.info(f"Market data returned: {snapshot.listings_count} listings from {snapshot.source}")
         return response
@@ -269,13 +410,17 @@ from services.listing_generator import listing_generator, ListingRequest as List
 
 
 @app.post("/generate-listing")
-async def generate_listing(req: ListingGenRequest):
+async def generate_listing(request: Request, req: ListingGenRequest):
     """
     Generate optimized marketplace listing using AI.
 
     Supports multiple platforms (eBay, PWCC, WhatNot, COMC) with
     customizable tone and formatting.
+    Rate limited: 10 requests per minute (configurable)
     """
+    # Check rate limit before processing
+    check_rate_limit(request, ai_rate_limiter)
+
     logger.info(f"Generating {req.platform} listing for {req.player}")
 
     try:
@@ -295,3 +440,75 @@ async def generate_listing(req: ListingGenRequest):
     except Exception as e:
         logger.error(f"Listing generation failed: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to generate listing: {str(e)}")
+
+
+# Import email service
+from services.email import email_service
+
+
+class PaymentFailedRequest(BaseModel):
+    email: str
+    subscription_id: str
+    user_name: Optional[str] = None
+
+
+class SubscriptionCanceledRequest(BaseModel):
+    email: str
+    end_date: str
+    user_name: Optional[str] = None
+
+
+@app.post("/notify/payment-failed")
+async def notify_payment_failed(req: PaymentFailedRequest):
+    """
+    Send payment failed notification email.
+
+    Called by webhook handlers when a payment fails.
+    """
+    logger.info(f"Sending payment failed notification to {req.email}")
+
+    try:
+        success = await email_service.send_payment_failed_email(
+            to=req.email,
+            subscription_id=req.subscription_id,
+            user_name=req.user_name
+        )
+
+        if success:
+            logger.info(f"Payment failed notification sent to {req.email}")
+            return {"status": "sent", "email": req.email}
+        else:
+            logger.warning(f"Payment failed notification not sent (email service disabled)")
+            return {"status": "skipped", "reason": "email service not configured"}
+
+    except Exception as e:
+        logger.error(f"Failed to send payment failed notification: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to send notification: {str(e)}")
+
+
+@app.post("/notify/subscription-canceled")
+async def notify_subscription_canceled(req: SubscriptionCanceledRequest):
+    """
+    Send subscription canceled notification email.
+
+    Called by webhook handlers when a subscription is canceled.
+    """
+    logger.info(f"Sending subscription canceled notification to {req.email}")
+
+    try:
+        success = await email_service.send_subscription_canceled_email(
+            to=req.email,
+            end_date=req.end_date,
+            user_name=req.user_name
+        )
+
+        if success:
+            logger.info(f"Subscription canceled notification sent to {req.email}")
+            return {"status": "sent", "email": req.email}
+        else:
+            logger.warning(f"Subscription canceled notification not sent (email service disabled)")
+            return {"status": "skipped", "reason": "email service not configured"}
+
+    except Exception as e:
+        logger.error(f"Failed to send subscription canceled notification: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to send notification: {str(e)}")
